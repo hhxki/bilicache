@@ -1,0 +1,7 @@
+__pycache__/
+Download/
+*.pyc
+.env
+config.toml
+*.log
+ffmpeg.exe
