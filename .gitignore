@@ -1,7 +1,6 @@
 __pycache__/
 Download/
 *.pyc
-.env
-config.toml
+*.toml
 *.log
 ffmpeg.exe

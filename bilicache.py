@@ -6,6 +6,8 @@ from pprint import pprint
 import login_cookie
 from config_manager import ConfigManager
 import subprocess
+from creator_manager import CreatorManager
+from record_manager import RecordManager
 
 
 class ErrorCountTooMuch(Exception):
@@ -26,9 +28,9 @@ class ErrorChargeVideo(Exception):
         return self.info
 
 
-def safe_filename(name: str) -> str:
+def safe_filename(filename: str) -> str:
     return (
-        name.replace("\\", "_")
+        filename.replace("\\", "_")
         .replace("/", "_")
         .replace(":", "_")
         .replace("*", "_")
@@ -40,7 +42,7 @@ def safe_filename(name: str) -> str:
     )
 
 
-async def downloadVideo(url, id, name):
+async def downloadVideo(url, id, filename, path="./Download/"):
     async with aiohttp.ClientSession() as sess:
         video_url = url["dash"]["video"][0]["baseUrl"]
         for i in url["dash"]["video"]:
@@ -49,7 +51,7 @@ async def downloadVideo(url, id, name):
                     video_url = i["baseUrl"]
         HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.bilibili.com/"}
         async with sess.get(video_url, headers=HEADERS) as resp:
-            with open(f"./Download/{name}_temp.mp4", "wb") as f:
+            with open(f"{path}{filename}_temp.mp4", "wb") as f:
                 while True:
                     chunk = await resp.content.read(1024)
                     if not chunk:
@@ -59,7 +61,7 @@ async def downloadVideo(url, id, name):
                     f.write(chunk)
 
 
-async def downloadAudio(url, id, name):
+async def downloadAudio(url, id, filename, path="./Download/"):
     async with aiohttp.ClientSession() as sess:
         audio_url = url["dash"]["audio"][0]["baseUrl"]
         for i in url["dash"]["audio"]:
@@ -68,7 +70,7 @@ async def downloadAudio(url, id, name):
                     audio_url = i["baseUrl"]
         HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.bilibili.com/"}
         async with sess.get(audio_url, headers=HEADERS) as resp:
-            with open(f"./Download/{name}_temp.m4a", "wb") as f:
+            with open(f"{path}{filename}_temp.m4a", "wb") as f:
                 while True:
                     chunk = await resp.content.read(1024)
                     if not chunk:
@@ -81,24 +83,30 @@ async def downloadAudio(url, id, name):
 async def VideoDown(vid_id: str, credential=None):
     v = video.Video(bvid=vid_id, credential=credential)
     vid_info = await v.get_info()
-    name = safe_filename(vid_info["title"])
+    title = safe_filename(vid_info["title"])
+    creator = CreatorManager(vid_info["owner"]["mid"])
+    path = await creator.get_bilibili_path()
+    record = RecordManager(path)
+    if record.has(vid_id):
+        print(f"存在{vid_id}下载记录，跳过")
+        return
     try:
         url = await v.get_download_url(cid=vid_info["cid"])
     except ResponseCodeException as e:
         if e.code == 87008:
-            raise ErrorChargeVideo(f"跳过充电视频:{name}")
+            raise ErrorChargeVideo(f"跳过充电视频:{title}")
         raise
     vid_quality_list = url["accept_quality"]
     print("开始下载视频流")
     retry = 0
     while True:
         try:
-            await downloadVideo(url, vid_quality_list[0], name)
+            await downloadVideo(url, vid_quality_list[0], title, path=path)
             break
         except:
             retry += 1
             try:
-                os.remove(f"./Download/{name}_temp.mp4")
+                os.remove(f"{path}{title}_temp.mp4")
             except:
                 pass
             if retry >= 5:
@@ -109,12 +117,12 @@ async def VideoDown(vid_id: str, credential=None):
     print("开始下载音频流")
     while True:
         try:
-            await downloadAudio(url, vid_quality_list[0], name)
+            await downloadAudio(url, vid_quality_list[0], title, path=path)
             break
         except:
             retry += 1
             try:
-                os.remove(f"./Download/{name}_temp.m4a")
+                os.remove(f"{path}{title}_temp.m4a")
             except:
                 pass
             if retry >= 5:
@@ -122,30 +130,32 @@ async def VideoDown(vid_id: str, credential=None):
                 raise ErrorCountTooMuch("下载失败次数过多")
             asyncio.sleep(1)
     print("开始合并")
-    if os.path.exists(f"./Download/{name}.mp4"):
-        os.remove(f"./Download/{name}.mp4")
+    if os.path.exists(f"{path}{title}.mp4"):
+        os.remove(f"{path}{title}.mp4")
     DEV_NULL = open(os.devnull, "w")
     subprocess.run(
         (
             "./ffmpeg/ffmpeg",
             "-i",
-            f"./Download/{name}_temp.mp4",
+            f"{path}{title}_temp.mp4",
             "-i",
-            f"./Download/{name}_temp.m4a",
+            f"{path}{title}_temp.m4a",
             "-vcodec",
             "copy",
             "-acodec",
             "copy",
-            f"./Download/{name}.mp4",
+            f"{path}{title}.mp4",
         ),
         stdout=DEV_NULL,
         stderr=subprocess.STDOUT,
     )
     DEV_NULL.close()
     del DEV_NULL
-    os.remove(f"./Download/{name}_temp.mp4")
-    os.remove(f"./Download/{name}_temp.m4a")
+    os.remove(f"{path}{title}_temp.mp4")
+    os.remove(f"{path}{title}_temp.m4a")
     print("下载完成")
+    record.add(vid_id,title)
+    print('添加记录')
 
 
 async def main() -> None:
@@ -162,7 +172,8 @@ async def main() -> None:
         dedeuserid=cookies["DedeUserID"],
         ac_time_value=cookies["ac_time_value"],
     )
-    videos = ["BV1kZYNz9EH5", "BV14B1dYsEh4"]
+    creator = CreatorManager(3546912688966277)
+    videos = await creator.get_bilibili_videos()
     for v in videos:
         try:
             await VideoDown(vid_id=v, credential=credential)
