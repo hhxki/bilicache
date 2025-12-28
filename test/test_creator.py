@@ -21,7 +21,9 @@ class testCreatorManager(unittest.TestCase):
             res=await creator.get_bilibili_name()
             print(res)
         asyncio.run(run())
-
+    def test_get_list_name(self):
+        res=CreatorManager.get_list_bilibili_creator()
+        pprint(res)
 
 if __name__ == "__main__":
     unittest.main()

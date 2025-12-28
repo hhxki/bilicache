@@ -8,6 +8,15 @@ class CreatorManager:
     def __init__(self, uid):
         self.uid = str(uid)
 
+    @staticmethod
+    def get_bilibili_creator_list():
+        config = ConfigManager("./config/creator.toml")
+        uid_list = config.get_key("bilibili")
+        creators = []
+        for uid in uid_list:
+            creators.append(CreatorManager(uid))
+        return creators
+
     async def get_bilibili_videos(self):
         up = User(self.uid)
         info = await up.get_overview_stat()

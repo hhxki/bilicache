@@ -30,6 +30,8 @@ class ConfigManager():
         return section in self.data and key in self.data[section]
     def get(self,section,key,default=None):
         return self.data.get(section,{}).get(key,default)
+    def get_key(self,section):
+        return list(self.data.get(section,{}).keys())
     def set(self,section,key,value):
         self.data.setdefault(section,{})
         self.data[section][key]=value

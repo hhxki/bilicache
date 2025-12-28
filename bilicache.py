@@ -154,8 +154,8 @@ async def VideoDown(vid_id: str, credential=None):
     os.remove(f"{path}{title}_temp.mp4")
     os.remove(f"{path}{title}_temp.m4a")
     print("下载完成")
-    record.add(vid_id,title)
-    print('添加记录')
+    record.add(vid_id, title)
+    print("添加记录")
 
 
 async def main() -> None:
@@ -172,15 +172,17 @@ async def main() -> None:
         dedeuserid=cookies["DedeUserID"],
         ac_time_value=cookies["ac_time_value"],
     )
-    creator = CreatorManager(3546912688966277)
-    videos = await creator.get_bilibili_videos()
-    for v in videos:
-        try:
-            await VideoDown(vid_id=v, credential=credential)
-        except ErrorChargeVideo as e:
-            print(e)
-        except ResponseCodeException as e:
-            print(f"{v}其他接口错误:{e.code}")
+
+    creators = CreatorManager.get_bilibili_creator_list()
+    for creator in creators:
+        videos = await creator.get_bilibili_videos()
+        for v in videos:
+            try:
+                await VideoDown(vid_id=v, credential=credential)
+            except ErrorChargeVideo as e:
+                print(e)
+            except ResponseCodeException as e:
+                print(f"{v}其他接口错误:{e.code}")
 
 
 if __name__ == "__main__":
