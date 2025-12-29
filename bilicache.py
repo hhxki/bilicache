@@ -8,24 +8,9 @@ from config_manager import ConfigManager
 import subprocess
 from creator_manager import CreatorManager
 from record_manager import RecordManager
-
-
-class ErrorCountTooMuch(Exception):
-    def __init__(self, info):
-        Exception.__init__(self)
-        self.info = info
-
-    def __str__(self):
-        return self.info
-
-
-class ErrorChargeVideo(Exception):
-    def __init__(self, info):
-        Exception.__init__(self)
-        self.info = info
-
-    def __str__(self):
-        return self.info
+from bilicache_exception import *
+import logging
+logger = logging.getLogger("bilicache")
 
 
 def safe_filename(filename: str) -> str:
@@ -88,7 +73,7 @@ async def VideoDown(vid_id: str, credential=None):
     path = await creator.get_bilibili_path()
     record = RecordManager(path)
     if record.has(vid_id):
-        print(f"存在{vid_id}下载记录，跳过")
+        logging.info(f"存在{vid_id}下载记录，跳过")
         return
     try:
         url = await v.get_download_url(cid=vid_info["cid"])
@@ -97,7 +82,7 @@ async def VideoDown(vid_id: str, credential=None):
             raise ErrorChargeVideo(f"跳过充电视频:{title}")
         raise
     vid_quality_list = url["accept_quality"]
-    print("开始下载视频流")
+    logger(f"下载{vid_id}视频流")
     retry = 0
     while True:
         try:
@@ -114,7 +99,7 @@ async def VideoDown(vid_id: str, credential=None):
                 raise ErrorCountTooMuch("下载失败次数过多")
             asyncio.sleep(1)
     retry = 0
-    print("开始下载音频流")
+    logger(f"下载{vid_id}音频流")
     while True:
         try:
             await downloadAudio(url, vid_quality_list[0], title, path=path)
@@ -129,7 +114,7 @@ async def VideoDown(vid_id: str, credential=None):
                 del retry
                 raise ErrorCountTooMuch("下载失败次数过多")
             asyncio.sleep(1)
-    print("开始合并")
+    logger(f"合并{vid_id}")
     if os.path.exists(f"{path}{title}.mp4"):
         os.remove(f"{path}{title}.mp4")
     DEV_NULL = open(os.devnull, "w")
@@ -153,39 +138,6 @@ async def VideoDown(vid_id: str, credential=None):
     del DEV_NULL
     os.remove(f"{path}{title}_temp.mp4")
     os.remove(f"{path}{title}_temp.m4a")
-    print("下载完成")
+    logger(f"{vid_id}合并完成")
     record.add(vid_id, title)
-    print("添加记录")
-
-
-async def main() -> None:
-    config = ConfigManager()
-    if not config.has("account", "cookies"):
-        cookies = await login_cookie.get_cookies()
-        config.set("account", "cookies", cookies)
-    cookies = config.get("account", "cookies")
-    credential = Credential(
-        sessdata=cookies["SESSDATA"],
-        bili_jct=cookies["bili_jct"],
-        buvid3=cookies["buvid3"],
-        buvid4=cookies["buvid4"],
-        dedeuserid=cookies["DedeUserID"],
-        ac_time_value=cookies["ac_time_value"],
-    )
-
-    creators = CreatorManager.get_bilibili_creator_list()
-    for creator in creators:
-        videos = await creator.get_bilibili_videos()
-        for v in videos:
-            try:
-                await VideoDown(vid_id=v, credential=credential)
-            except ErrorChargeVideo as e:
-                print(e)
-            except ResponseCodeException as e:
-                print(f"{v}其他接口错误:{e.code}")
-
-
-if __name__ == "__main__":
-    if not os.path.exists("./Download"):
-        os.mkdir("./Download")
-    asyncio.run(main())
+    logger(f"添加记录{vid_id}")

@@ -3,7 +3,7 @@ from config_manager import ConfigManager
 
 class RecordManager:
     def __init__(self, path):
-        self.path = f"{path}record.toml"
+        self.path = f"{path}.record.toml"
         self.config = ConfigManager(self.path)
 
     def has(self, bvid):
