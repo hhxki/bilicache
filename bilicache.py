@@ -10,6 +10,7 @@ from creator_manager import CreatorManager
 from record_manager import RecordManager
 from bilicache_exception import *
 import logging
+
 logger = logging.getLogger("bilicache")
 
 
@@ -82,7 +83,7 @@ async def VideoDown(vid_id: str, credential=None):
             raise ErrorChargeVideo(f"跳过充电视频:{title}")
         raise
     vid_quality_list = url["accept_quality"]
-    logger(f"下载{vid_id}视频流")
+    logger.debug(f"下载{vid_id}视频流")
     retry = 0
     while True:
         try:
@@ -99,7 +100,7 @@ async def VideoDown(vid_id: str, credential=None):
                 raise ErrorCountTooMuch("下载失败次数过多")
             asyncio.sleep(1)
     retry = 0
-    logger(f"下载{vid_id}音频流")
+    logger.debug(f"下载{vid_id}音频流")
     while True:
         try:
             await downloadAudio(url, vid_quality_list[0], title, path=path)
@@ -114,7 +115,7 @@ async def VideoDown(vid_id: str, credential=None):
                 del retry
                 raise ErrorCountTooMuch("下载失败次数过多")
             asyncio.sleep(1)
-    logger(f"合并{vid_id}")
+    logger.debug(f"合并{vid_id}")
     if os.path.exists(f"{path}{title}.mp4"):
         os.remove(f"{path}{title}.mp4")
     DEV_NULL = open(os.devnull, "w")
@@ -138,6 +139,6 @@ async def VideoDown(vid_id: str, credential=None):
     del DEV_NULL
     os.remove(f"{path}{title}_temp.mp4")
     os.remove(f"{path}{title}_temp.m4a")
-    logger(f"{vid_id}合并完成")
+    logger.info(f"{vid_id}合并完成")
     record.add(vid_id, title)
-    logger(f"添加记录{vid_id}")
+    logger.info(f"添加记录{vid_id}")

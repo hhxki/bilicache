@@ -9,6 +9,7 @@ from bilicache_exception import *
 import bilicache
 import logging
 import logging.config
+from aysnc_controller import *
 
 LOG_CONF = {
     "version": 1,
@@ -71,17 +72,11 @@ async def main() -> None:
         dedeuserid=cookies["DedeUserID"],
         ac_time_value=cookies["ac_time_value"],
     )
-
-    creators = CreatorManager.get_bilibili_creator_list()
-    for creator in creators:
-        videos = await creator.get_bilibili_videos()
-        for v in videos:
-            try:
-                await bilicache.VideoDown(vid_id=v, credential=credential)
-            except ErrorChargeVideo as e:
-                logger.exception(e)
-            except ResponseCodeException as e:
-                logger.exception(f"{v}其他接口错误:{e.code}")
+    queue = asyncio.Queue()
+    sem = asyncio.Semaphore(5)
+    asyncio.create_task(poller(queue, credential))
+    asyncio.create_task(dispatcher(queue, sem))
+    await asyncio.Event().wait()
 
 
 if __name__ == "__main__":

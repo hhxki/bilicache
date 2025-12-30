@@ -11,19 +11,24 @@ from pprint import pprint
 class testCreatorManager(unittest.TestCase):
     def test_get_bili_video(self):
         async def run():
-            creator = CreatorManager(3546912688966277)
+            creator = CreatorManager(3494365552970123)
             res = await creator.get_bilibili_videos()
             pprint(res)
+
         asyncio.run(run())
+
     def test_get_bili_name(self):
         async def run():
-            creator = CreatorManager(3546912688966277)
-            res=await creator.get_bilibili_name()
+            creator = CreatorManager(3494365552970123)
+            res = await creator.get_bilibili_name()
             print(res)
+
         asyncio.run(run())
+
     def test_get_list_name(self):
-        res=CreatorManager.get_list_bilibili_creator()
+        res = CreatorManager.get_bilibili_creator_list()
         pprint(res)
+
 
 if __name__ == "__main__":
     unittest.main()

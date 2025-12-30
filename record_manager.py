@@ -16,3 +16,8 @@ class RecordManager:
         records = self.config.get("download", "record") or {}
         records[bvid] = title
         self.config.set("download", "record", records)
+
+    def filter_videos(self, videos):
+        records = set(self.config.get("download", "record") or {})
+        videos = [vid for vid in videos if vid not in records]
+        return videos
