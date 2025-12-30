@@ -1,4 +1,16 @@
-import tomllib
+def toml_load(path: str):
+    try:
+        import tomllib  # Python 3.11+
+
+        with open(path, "rb") as f:
+            return tomllib.load(f)
+    except ModuleNotFoundError:
+        import toml  # type: ignore
+
+        with open(path, "r", encoding="utf-8") as f:
+            return toml.loads(f.read())
+
+
 import tomli_w
 import os
 import threading
@@ -28,34 +40,34 @@ class ConfigManager:
         self.data = {}
         self._save()
 
+
     def _load(self, require_lock=True):
-        """加载配置文件
-        require_lock: 如果为 False，则不在内部获取锁（调用者已持有锁）
-        """
+        """加载配置文件"""
+
         def _do_load():
-            with open(self.path, "rb") as f:
-                try:
-                    # 尝试获取文件锁（非阻塞）
-                    if os.name == 'nt':  # Windows
-                        # Windows 需要锁定整个文件，使用文件大小
-                        file_size = os.path.getsize(self.path)
-                        if file_size > 0:
-                            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, file_size)
-                    else:  # Unix/Linux
+            try:
+                # 文件锁只针对 path，不关心 open 模式
+                if os.name == "nt":
+                    with open(self.path, "rb") as f:
+                        size = os.path.getsize(self.path)
+                        if size > 0:
+                            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, size)
+                        self.data = toml_load(self.path)
+                        if size > 0:
+                            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, size)
+                else:
+                    # Unix: 用独立 fd 上锁
+                    with open(self.path, "rb") as f:
                         fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    self.data = tomllib.load(f)
-                    if os.name == 'nt' and os.path.getsize(self.path) > 0:
-                        msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, os.path.getsize(self.path))
-                except (IOError, OSError):
-                    # 如果无法获取锁，重新加载（可能其他进程正在写入）
-                    f.seek(0)
-                    self.data = tomllib.load(f)
-        
+                    self.data = toml_load(self.path)
+
+            except (IOError, OSError):
+                self.data = toml_load(self.path)
+
         if require_lock:
             with self._lock:
                 _do_load()
         else:
-            # 调用者已持有锁，直接加载
             _do_load()
 
     def _save(self, require_lock=True):
@@ -63,7 +75,7 @@ class ConfigManager:
         require_lock: 如果为 False，则不在内部获取锁（调用者已持有锁）
         """
         self._ensure_dir()
-        
+
         def _do_save():
             # 使用临时文件+原子重命名来保证写入安全
             temp_path = self.path + ".tmp"
@@ -98,7 +110,7 @@ class ConfigManager:
                 os.replace(temp_path, self.path)
             else:
                 os.rename(temp_path, self.path)
-        
+
         if require_lock:
             with self._lock:
                 _do_save()
@@ -121,7 +133,7 @@ class ConfigManager:
         self.data.setdefault(section, {})
         self.data[section][key] = value
         self._save()
-    
+
     def set_batch(self, updates):
         """批量更新配置，减少文件写入次数
         updates: [(section, key, value), ...]

@@ -6,6 +6,7 @@ import logging
 from bilibili_api import ResponseCodeException
 from creator_manager import CreatorManager
 from record_manager import RecordManager
+import aiohttp
 
 
 @dataclass
@@ -17,8 +18,23 @@ class DownloadEvent:
 logger = logging.getLogger("bilicache")
 
 
+async def check_network(timeout=3):
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "http://www.baidu.com", timeout=aiohttp.ClientTimeout(total=timeout)
+            ) as resp:
+                return resp.status == 200
+    except Exception:
+        return False
+
+
 async def poller(queue: asyncio.Queue, credential):
     while True:
+        if not await check_network():
+            logger.warning("网络未连接,30s后重连")
+            await asyncio.sleep(30)
+            continue
         creators = CreatorManager.get_bilibili_creator_list()
         sem = asyncio.Semaphore(5)
         tasks = [
