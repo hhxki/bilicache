@@ -33,10 +33,11 @@ async def process_creator(creator, queue, credential, sem: asyncio.Semaphore):
         videos = await creator.get_bilibili_videos()
         path = await creator.get_bilibili_path()
         record = RecordManager(path)
+        # filter_videos 会自动清理残留的 downloading 状态
         videos = record.filter_videos(videos)
         creator_name = await creator.get_bilibili_name()
         if not videos:
-            logging.info(f"{creator_name}:未检测到新视频")
+            logging.info(f"未检测到新视频: {creator_name}")
         for vid in videos:
             event = DownloadEvent(vid_id=vid, credential=credential)
             await queue.put(event)

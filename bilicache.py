@@ -73,72 +73,116 @@ async def VideoDown(vid_id: str, credential=None):
     creator = CreatorManager(vid_info["owner"]["mid"])
     path = await creator.get_bilibili_path()
     record = RecordManager(path)
+
+    # 检查是否已下载完成
     if record.has(vid_id):
         logging.info(f"存在{vid_id}下载记录，跳过")
         return
+
+    if record.is_downloading(vid_id, title):
+        logging.info(f"{vid_id}正在下载中，跳过")
+        return
+
+    if not record.mark_downloading(vid_id, title):
+        logging.info(f"{vid_id}已被其他任务标记为下载中，跳过")
+        return
+
+    logger.info(f"开始下载 {vid_id}: {title}")
+
     try:
         url = await v.get_download_url(cid=vid_info["cid"])
     except ResponseCodeException as e:
+        # 如果获取下载链接失败，取消下载中标记
+        with record.config._lock:
+            record.config._load(require_lock=False)
+            downloading = record.config.get("download", "downloading") or {}
+            if vid_id in downloading:
+                del downloading[vid_id]
+                record.config.data.setdefault("download", {})
+                record.config.data["download"]["downloading"] = downloading
+                record.config._save(require_lock=False)
         if e.code == 87008:
             raise ErrorChargeVideo(f"跳过充电视频:{title}")
         raise
     vid_quality_list = url["accept_quality"]
-    logger.debug(f"下载{vid_id}视频流")
-    retry = 0
-    while True:
-        try:
-            await downloadVideo(url, vid_quality_list[0], title, path=path)
-            break
-        except:
-            retry += 1
+    try:
+        logger.debug(f"下载{vid_id}视频流")
+        retry = 0
+        while True:
             try:
-                os.remove(f"{path}{title}_temp.mp4")
+                await downloadVideo(url, vid_quality_list[0], title, path=path)
+                break
             except:
-                pass
-            if retry >= 5:
-                del retry
-                raise ErrorCountTooMuch("下载失败次数过多")
-            asyncio.sleep(1)
-    retry = 0
-    logger.debug(f"下载{vid_id}音频流")
-    while True:
-        try:
-            await downloadAudio(url, vid_quality_list[0], title, path=path)
-            break
-        except:
-            retry += 1
+                retry += 1
+                try:
+                    os.remove(f"{path}{title}_temp.mp4")
+                except:
+                    pass
+                if retry >= 5:
+                    del retry
+                    raise ErrorCountTooMuch("下载失败次数过多")
+                asyncio.sleep(1)
+        retry = 0
+        logger.debug(f"下载{vid_id}音频流")
+        while True:
             try:
-                os.remove(f"{path}{title}_temp.m4a")
+                await downloadAudio(url, vid_quality_list[0], title, path=path)
+                break
             except:
-                pass
-            if retry >= 5:
-                del retry
-                raise ErrorCountTooMuch("下载失败次数过多")
-            asyncio.sleep(1)
-    logger.debug(f"合并{vid_id}")
-    if os.path.exists(f"{path}{title}.mp4"):
-        os.remove(f"{path}{title}.mp4")
-    DEV_NULL = open(os.devnull, "w")
-    subprocess.run(
-        (
-            "./ffmpeg/ffmpeg",
-            "-i",
-            f"{path}{title}_temp.mp4",
-            "-i",
-            f"{path}{title}_temp.m4a",
-            "-vcodec",
-            "copy",
-            "-acodec",
-            "copy",
-            f"{path}{title}.mp4",
-        ),
-        stdout=DEV_NULL,
-        stderr=subprocess.STDOUT,
-    )
-    DEV_NULL.close()
-    del DEV_NULL
-    os.remove(f"{path}{title}_temp.mp4")
-    os.remove(f"{path}{title}_temp.m4a")
-    logger.info(f"{vid_id}合并完成")
-    record.add(vid_id, title)
-    logger.info(f"添加记录{vid_id}")
+                retry += 1
+                try:
+                    os.remove(f"{path}{title}_temp.m4a")
+                except:
+                    pass
+                if retry >= 5:
+                    del retry
+                    raise ErrorCountTooMuch("下载失败次数过多")
+                asyncio.sleep(1)
+        logger.debug(f"合并{vid_id}")
+        if os.path.exists(f"{path}{title}.mp4"):
+            os.remove(f"{path}{title}.mp4")
+        DEV_NULL = open(os.devnull, "w")
+        subprocess.run(
+            (
+                "./ffmpeg/ffmpeg",
+                "-i",
+                f"{path}{title}_temp.mp4",
+                "-i",
+                f"{path}{title}_temp.m4a",
+                "-vcodec",
+                "copy",
+                "-acodec",
+                "copy",
+                f"{path}{title}.mp4",
+            ),
+            stdout=DEV_NULL,
+            stderr=subprocess.STDOUT,
+        )
+        DEV_NULL.close()
+        del DEV_NULL
+        os.remove(f"{path}{title}_temp.mp4")
+        os.remove(f"{path}{title}_temp.m4a")
+        logger.info(f"合并完成 {vid_id}: {title}")
+        # add 方法会自动取消 downloading 状态并添加到完成记录
+        record.add(vid_id, title)
+        logger.debug(f"添加记录 {vid_id}: {title}")
+    except Exception as e:
+        # 下载失败时，清理 downloading 状态和临时文件
+        # 使用锁保护下的原子操作
+        with record.config._lock:
+            record.config._load(require_lock=False)
+            downloading = record.config.get("download", "downloading") or {}
+            if vid_id in downloading:
+                del downloading[vid_id]
+                record.config.data.setdefault("download", {})
+                record.config.data["download"]["downloading"] = downloading
+                record.config._save(require_lock=False)
+        try:
+            os.remove(f"{path}{title}_temp.mp4")
+        except:
+            pass
+        try:
+            os.remove(f"{path}{title}_temp.m4a")
+        except:
+            pass
+        raise
