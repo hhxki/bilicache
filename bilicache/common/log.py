@@ -1,3 +1,6 @@
+"""
+日志处理器
+"""
 import os
 from logging.handlers import TimedRotatingFileHandler
 import time
@@ -68,3 +71,4 @@ class SafeRotatingFileHandler(TimedRotatingFileHandler):
                     addend = 3600
                 newRolloverAt += addend
         self.rolloverAt = newRolloverAt
+

@@ -1,3 +1,6 @@
+"""
+配置管理器
+"""
 def toml_load(path: str):
     try:
         import tomllib  # Python 3.11+
@@ -148,3 +151,4 @@ class ConfigManager:
             return True
         else:
             return False
+

@@ -4,7 +4,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.abspath(".."))
-from creator_manager import CreatorManager
+from bilicache import CreatorManager
 from pprint import pprint
 
 

@@ -1,8 +1,12 @@
+"""
+创作者管理器
+"""
 from bilibili_api.user import User
 from bilibili_api import ResponseCodeException
 import os
 import asyncio
-from config_manager import ConfigManager
+
+from bilicache.managers.config_manager import ConfigManager
 
 
 class CreatorManager:
@@ -38,7 +42,8 @@ class CreatorManager:
             return bvids
         except ResponseCodeException as e:
             if e.code == -404:
-                self.log_out_creator()
+                # 用户不存在或已注销，返回空列表
+                return []
 
     async def get_bilibili_name(self):
         try:
@@ -63,3 +68,4 @@ class CreatorManager:
         if not os.path.exists(path):
             os.mkdir(path)
         return f"{path}/"
+

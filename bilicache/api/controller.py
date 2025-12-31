@@ -1,12 +1,16 @@
+"""
+异步任务控制器
+"""
 from dataclasses import dataclass
 import asyncio
-from bilicache_exception import *
-import bilicache
 import logging
-from bilibili_api import ResponseCodeException
-from creator_manager import CreatorManager
-from record_manager import RecordManager
 import aiohttp
+from bilibili_api import ResponseCodeException
+
+from bilicache.core.download import VideoDown
+from bilicache.managers.creator_manager import CreatorManager
+from bilicache.managers.record_manager import RecordManager
+from bilicache.common.exceptions import ErrorChargeVideo
 
 
 @dataclass
@@ -19,6 +23,7 @@ logger = logging.getLogger("bilicache")
 
 
 async def check_network(timeout=3):
+    """检查网络连接"""
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
@@ -30,6 +35,7 @@ async def check_network(timeout=3):
 
 
 async def poller(queue: asyncio.Queue, credential):
+    """轮询检查新视频并加入下载队列"""
     while True:
         if not await check_network():
             logger.warning("网络未连接,30s后重连")
@@ -45,6 +51,7 @@ async def poller(queue: asyncio.Queue, credential):
 
 
 async def process_creator(creator, queue, credential, sem: asyncio.Semaphore):
+    """处理单个创作者，获取视频列表并加入队列"""
     async with sem:
         videos = await creator.get_bilibili_videos()
         path = await creator.get_bilibili_path()
@@ -60,16 +67,18 @@ async def process_creator(creator, queue, credential, sem: asyncio.Semaphore):
 
 
 async def handle_download(event: DownloadEvent, sem: asyncio.Semaphore):
+    """处理单个下载任务"""
     async with sem:
         try:
-            await bilicache.VideoDown(vid_id=event.vid_id, credential=event.credential)
+            await VideoDown(vid_id=event.vid_id, credential=event.credential)
         except ErrorChargeVideo as e:
             logger.exception(e)
         except ResponseCodeException as e:
-            logger.exception(f"{event.video_id} 接口错误: {e.code}")
+            logger.exception(f"{event.vid_id} 接口错误: {e.code}")
 
 
 async def _run(event, queue, sem):
+    """运行下载任务并标记完成"""
     try:
         await handle_download(event, sem)
     finally:
@@ -77,6 +86,8 @@ async def _run(event, queue, sem):
 
 
 async def dispatcher(queue: asyncio.Queue, sem: asyncio.Semaphore):
+    """分发下载任务"""
     while True:
         event = await queue.get()
         asyncio.create_task(_run(event, queue, sem))
+

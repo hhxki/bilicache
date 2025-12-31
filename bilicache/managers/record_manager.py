@@ -1,4 +1,7 @@
-from config_manager import ConfigManager
+"""
+下载记录管理器
+"""
+from bilicache.managers.config_manager import ConfigManager
 import os
 import logging
 
@@ -131,3 +134,4 @@ class RecordManager:
         # 排除已下载和正在下载的视频
         videos = [vid for vid in videos if vid not in records and vid not in downloading]
         return videos
+

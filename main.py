@@ -1,15 +1,11 @@
 import sys
-from config_manager import ConfigManager
-from bilibili_api import Credential, ResponseCodeException
-import login_cookie
-from creator_manager import CreatorManager
 import os
 import asyncio
-from bilicache_exception import *
-import bilicache
 import logging
 import logging.config
-from aysnc_controller import *
+from bilibili_api import Credential, ResponseCodeException
+
+from bilicache import ConfigManager, get_cookies, poller, dispatcher
 
 LOG_CONF = {
     "version": 1,
@@ -32,7 +28,7 @@ LOG_CONF = {
         },
         "file": {
             "level": logging.DEBUG,
-            "class": "common.log.SafeRotatingFileHandler",
+            "class": "bilicache.common.log.SafeRotatingFileHandler",
             "when": "W0",
             "interval": 1,
             "backupCount": 1,
@@ -61,7 +57,7 @@ async def main() -> None:
         os.mkdir("./Download")
     config = ConfigManager()
     if not config.has("account", "cookies"):
-        cookies = await login_cookie.get_cookies()
+        cookies = await get_cookies()
         config.set("account", "cookies", cookies)
     cookies = config.get("account", "cookies")
     credential = Credential(

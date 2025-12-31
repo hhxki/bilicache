@@ -1,20 +1,22 @@
+"""
+视频下载核心功能
+"""
 import asyncio
 import os
 from bilibili_api import video, Credential, ResponseCodeException
 import aiohttp
-from pprint import pprint
-import login_cookie
-from config_manager import ConfigManager
 import subprocess
-from creator_manager import CreatorManager
-from record_manager import RecordManager
-from bilicache_exception import *
 import logging
+
+from bilicache.managers.creator_manager import CreatorManager
+from bilicache.managers.record_manager import RecordManager
+from bilicache.common.exceptions import ErrorCountTooMuch, ErrorChargeVideo
 
 logger = logging.getLogger("bilicache")
 
 
 def safe_filename(filename: str) -> str:
+    """将文件名中的非法字符替换为下划线"""
     return (
         filename.replace("\\", "_")
         .replace("/", "_")
@@ -29,6 +31,7 @@ def safe_filename(filename: str) -> str:
 
 
 async def downloadVideo(url, id, filename, path="./Download/"):
+    """下载视频流"""
     async with aiohttp.ClientSession() as sess:
         video_url = url["dash"]["video"][0]["baseUrl"]
         for i in url["dash"]["video"]:
@@ -48,6 +51,7 @@ async def downloadVideo(url, id, filename, path="./Download/"):
 
 
 async def downloadAudio(url, id, filename, path="./Download/"):
+    """下载音频流"""
     async with aiohttp.ClientSession() as sess:
         audio_url = url["dash"]["audio"][0]["baseUrl"]
         for i in url["dash"]["audio"]:
@@ -67,6 +71,7 @@ async def downloadAudio(url, id, filename, path="./Download/"):
 
 
 async def VideoDown(vid_id: str, credential=None):
+    """下载视频的主函数"""
     v = video.Video(bvid=vid_id, credential=credential)
     vid_info = await v.get_info()
     title = safe_filename(vid_info["title"])
@@ -121,7 +126,7 @@ async def VideoDown(vid_id: str, credential=None):
                 if retry >= 5:
                     del retry
                     raise ErrorCountTooMuch("下载失败次数过多")
-                asyncio.sleep(1)
+                await asyncio.sleep(1)
         retry = 0
         logger.debug(f"下载{vid_id}音频流")
         while True:
@@ -137,7 +142,7 @@ async def VideoDown(vid_id: str, credential=None):
                 if retry >= 5:
                     del retry
                     raise ErrorCountTooMuch("下载失败次数过多")
-                asyncio.sleep(1)
+                await asyncio.sleep(1)
         logger.debug(f"合并{vid_id}")
         if os.path.exists(f"{path}{title}.mp4"):
             os.remove(f"{path}{title}.mp4")
@@ -186,3 +191,4 @@ async def VideoDown(vid_id: str, credential=None):
         except:
             pass
         raise
+
