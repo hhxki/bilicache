@@ -1,9 +1,11 @@
 """
 下载记录管理器
 """
+
 from bilicache.managers.config_manager import ConfigManager
 import os
 import logging
+from pathlib import Path
 
 
 class RecordManager:
@@ -23,14 +25,14 @@ class RecordManager:
         downloading = self.config.get("download", "downloading") or {}
         if bvid in downloading:
             return True
-        
+
         # 检查临时文件是否存在
         if title:
             temp_video = f"{self.download_path}{title}_temp.mp4"
             temp_audio = f"{self.download_path}{title}_temp.m4a"
             if os.path.exists(temp_video) or os.path.exists(temp_audio):
                 return True
-        
+
         return False
 
     def mark_downloading(self, bvid, title):
@@ -57,7 +59,7 @@ class RecordManager:
             del downloading[bvid]
             self.config.data.setdefault("download", {})
             self.config.data["download"]["downloading"] = downloading
-    
+
     def unmark_downloading_and_save(self, bvid):
         """取消下载中标记并立即保存"""
         self.unmark_downloading(bvid)
@@ -74,14 +76,14 @@ class RecordManager:
                 del downloading[bvid]
                 self.config.data.setdefault("download", {})
                 self.config.data["download"]["downloading"] = downloading
-            
+
             # 检查是否已存在
             records = self.config.get("download", "record") or {}
             if bvid in records:
                 # 即使已存在，也要保存（因为可能清理了 downloading 状态）
                 self.config._save(require_lock=False)
                 return
-            
+
             # 添加到完成记录
             records[bvid] = title
             self.config.data.setdefault("download", {})
@@ -96,20 +98,20 @@ class RecordManager:
             downloading = self.config.get("download", "downloading") or {}
             records = self.config.get("download", "record") or {}
             cleaned = []
-            
+
             for bvid, title in list(downloading.items()):
                 # 如果已经在完成记录中，清理 downloading 状态
                 if bvid in records:
                     cleaned.append(bvid)
                     continue
-                
+
                 # 检查临时文件是否存在
                 temp_video = f"{self.download_path}{title}_temp.mp4"
                 temp_audio = f"{self.download_path}{title}_temp.m4a"
                 # 如果临时文件都不存在，说明下载已中断或完成，清理状态
                 if not os.path.exists(temp_video) and not os.path.exists(temp_audio):
                     cleaned.append(bvid)
-            
+
             # 批量清理找到的残留状态（只更新一次文件）
             if cleaned:
                 for bvid in cleaned:
@@ -119,19 +121,22 @@ class RecordManager:
                 self.config.data["download"]["downloading"] = downloading
                 self.config._save(require_lock=False)  # 只保存一次
                 logger = logging.getLogger("bilicache")
-                logger.info(f"清理了 {len(cleaned)} 个残留的 downloading 状态: {cleaned}")
-        
+                logger.info(
+                    f"清理了 {len(cleaned)} 个残留的 downloading 状态: {cleaned}"
+                )
+
         return len(cleaned)
 
     def filter_videos(self, videos):
         """过滤掉已下载和正在下载的视频"""
         # 先清理残留的 downloading 状态
         self.cleanup_stale_downloading()
-        
+
         records = set(self.config.get("download", "record") or {})
         downloading = set(self.config.get("download", "downloading") or {})
-        
-        # 排除已下载和正在下载的视频
-        videos = [vid for vid in videos if vid not in records and vid not in downloading]
-        return videos
 
+        # 排除已下载和正在下载的视频
+        videos = [
+            vid for vid in videos if vid not in records and vid not in downloading
+        ]
+        return videos

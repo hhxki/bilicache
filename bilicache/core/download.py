@@ -1,6 +1,7 @@
 """
 视频下载核心功能
 """
+
 import asyncio
 import os
 from bilibili_api import video, Credential, ResponseCodeException
@@ -10,7 +11,12 @@ import logging
 
 from bilicache.managers.creator_manager import CreatorManager
 from bilicache.managers.record_manager import RecordManager
-from bilicache.common.exceptions import ErrorCountTooMuch, ErrorChargeVideo
+from bilicache.common.exceptions import (
+    ErrorCountTooMuch,
+    ErrorChargeVideo,
+    ErrorNoAudioStream,
+)
+from bilicache.config.ffmpeg_locator import get_ffmpeg
 
 logger = logging.getLogger("bilicache")
 
@@ -52,8 +58,12 @@ async def downloadVideo(url, id, filename, path="./Download/"):
 
 async def downloadAudio(url, id, filename, path="./Download/"):
     """下载音频流"""
+    if not url["dash"]["audio"]:
+        logger.debug("抛出无音频流异常")
+        raise ErrorNoAudioStream("无音频流")
     async with aiohttp.ClientSession() as sess:
         audio_url = url["dash"]["audio"][0]["baseUrl"]
+
         for i in url["dash"]["audio"]:
             if i["codecid"] == 7:
                 if i["id"] == id:
@@ -125,6 +135,7 @@ async def VideoDown(vid_id: str, credential=None):
                     pass
                 if retry >= 5:
                     del retry
+                    logger.debug(f"下载{vid_id}视频失败")
                     raise ErrorCountTooMuch("下载失败次数过多")
                 await asyncio.sleep(1)
         retry = 0
@@ -133,7 +144,13 @@ async def VideoDown(vid_id: str, credential=None):
             try:
                 await downloadAudio(url, vid_quality_list[0], title, path=path)
                 break
-            except:
+            except ErrorNoAudioStream:
+                logger.debug(f"{vid_id} 无音频流，跳过音频下载")
+                os.replace(f"{path}{title}_temp.mp4", f"{path}{title}.mp4")
+                record.add(vid_id, title)
+                logger.debug(f"添加记录 {vid_id}: {title}")
+                return
+            except Exception:
                 retry += 1
                 try:
                     os.remove(f"{path}{title}_temp.m4a")
@@ -141,15 +158,17 @@ async def VideoDown(vid_id: str, credential=None):
                     pass
                 if retry >= 5:
                     del retry
+                    logger.debug(f"下载{vid_id}音频失败")
                     raise ErrorCountTooMuch("下载失败次数过多")
                 await asyncio.sleep(1)
         logger.debug(f"合并{vid_id}")
         if os.path.exists(f"{path}{title}.mp4"):
             os.remove(f"{path}{title}.mp4")
         DEV_NULL = open(os.devnull, "w")
+
         subprocess.run(
             (
-                "./ffmpeg/ffmpeg",
+                get_ffmpeg(),
                 "-i",
                 f"{path}{title}_temp.mp4",
                 "-i",
@@ -171,6 +190,7 @@ async def VideoDown(vid_id: str, credential=None):
         # add 方法会自动取消 downloading 状态并添加到完成记录
         record.add(vid_id, title)
         logger.debug(f"添加记录 {vid_id}: {title}")
+
     except Exception as e:
         # 下载失败时，清理 downloading 状态和临时文件
         # 使用锁保护下的原子操作
@@ -191,4 +211,3 @@ async def VideoDown(vid_id: str, credential=None):
         except:
             pass
         raise
-

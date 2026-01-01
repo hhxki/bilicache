@@ -11,6 +11,8 @@ from bilicache.managers.record_manager import RecordManager
 from bilicache.api.login import get_cookies
 from bilicache.api.controller import poller, dispatcher, DownloadEvent
 from bilicache.common.exceptions import ErrorCountTooMuch, ErrorChargeVideo
+from bilicache.common.check import Check
+from bilicache.config.ffmpeg_locator import get_ffmpeg
 
 __all__ = [
     "VideoDown",
@@ -24,5 +26,6 @@ __all__ = [
     "DownloadEvent",
     "ErrorCountTooMuch",
     "ErrorChargeVideo",
+    "ErrorNoAudioStream",
+    "Check",
 ]
-

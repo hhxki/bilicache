@@ -1,25 +1,13 @@
 """
 配置管理器
 """
-def toml_load(path: str):
-    try:
-        import tomllib  # Python 3.11+
 
-        with open(path, "rb") as f:
-            return tomllib.load(f)
-    except ModuleNotFoundError:
-        import toml  # type: ignore
-
-        with open(path, "r", encoding="utf-8") as f:
-            return toml.loads(f.read())
-
-
-import tomli_w
+from tomlkit import parse, dumps, document, item, nl
 import os
 import threading
 
 # 跨平台文件锁支持
-if os.name == 'nt':  # Windows
+if os.name == "nt":  # Windows
     import msvcrt
 else:  # Unix/Linux
     import fcntl
@@ -40,9 +28,8 @@ class ConfigManager:
             os.makedirs(dir_path, exist_ok=True)
 
     def _create(self):
-        self.data = {}
+        self.data = document()
         self._save()
-
 
     def _load(self, require_lock=True):
         """加载配置文件"""
@@ -55,17 +42,32 @@ class ConfigManager:
                         size = os.path.getsize(self.path)
                         if size > 0:
                             msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, size)
-                        self.data = toml_load(self.path)
+                        with open(self.path, "r", encoding="utf-8") as f:
+                            content = f.read().strip()
+                            if content:
+                                self.data = parse(content)
+                            else:
+                                self.data = document()
                         if size > 0:
                             msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, size)
                 else:
                     # Unix: 用独立 fd 上锁
                     with open(self.path, "rb") as f:
                         fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    self.data = toml_load(self.path)
+                    with open(self.path, "r", encoding="utf-8") as f:
+                        content = f.read().strip()
+                        if content:
+                            self.data = parse(content)
+                        else:
+                            self.data = document()
 
             except (IOError, OSError):
-                self.data = toml_load(self.path)
+                with open(self.path, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    if content:
+                        self.data = parse(content)
+                    else:
+                        self.data = document()
 
         if require_lock:
             with self._lock:
@@ -84,9 +86,9 @@ class ConfigManager:
             temp_path = self.path + ".tmp"
             # 在 Windows 上，需要先创建文件再锁定
             with open(temp_path, "wb") as f:
-                if os.name == 'nt':  # Windows
+                if os.name == "nt":  # Windows
                     # Windows 使用 msvcrt.locking，需要先写入数据才能锁定
-                    tomli_w.dump(self.data, f)
+                    f.write(dumps(self.data).encode("utf-8"))
                     f.flush()
                     file_size = f.tell()
                     if file_size > 0:
@@ -103,7 +105,7 @@ class ConfigManager:
                     # Unix/Linux 使用文件锁
                     fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                     try:
-                        tomli_w.dump(self.data, f)
+                        f.write(dumps(self.data).encode("utf-8"))
                         f.flush()
                         os.fsync(f.fileno())
                     finally:
@@ -151,4 +153,3 @@ class ConfigManager:
             return True
         else:
             return False
-

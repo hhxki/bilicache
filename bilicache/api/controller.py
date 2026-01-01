@@ -10,7 +10,9 @@ from bilibili_api import ResponseCodeException
 from bilicache.core.download import VideoDown
 from bilicache.managers.creator_manager import CreatorManager
 from bilicache.managers.record_manager import RecordManager
+from bilicache.managers.config_manager import ConfigManager
 from bilicache.common.exceptions import ErrorChargeVideo
+from bilicache.common.check import Check
 
 
 @dataclass
@@ -22,32 +24,24 @@ class DownloadEvent:
 logger = logging.getLogger("bilicache")
 
 
-async def check_network(timeout=3):
-    """检查网络连接"""
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "http://www.baidu.com", timeout=aiohttp.ClientTimeout(total=timeout)
-            ) as resp:
-                return resp.status == 200
-    except Exception:
-        return False
+
 
 
 async def poller(queue: asyncio.Queue, credential):
     """轮询检查新视频并加入下载队列"""
     while True:
-        if not await check_network():
+        if not await Check.network():
             logger.warning("网络未连接,30s后重连")
             await asyncio.sleep(30)
             continue
         creators = CreatorManager.get_bilibili_creator_list()
-        sem = asyncio.Semaphore(5)
+        config = ConfigManager()
+        sem = asyncio.Semaphore(config.get("check", "semaphore"))
         tasks = [
             process_creator(creator, queue, credential, sem) for creator in creators
         ]
         await asyncio.gather(*tasks)
-        await asyncio.sleep(10)
+        await asyncio.sleep(config.get("check","sleep"))
 
 
 async def process_creator(creator, queue, credential, sem: asyncio.Semaphore):
@@ -90,4 +84,3 @@ async def dispatcher(queue: asyncio.Queue, sem: asyncio.Semaphore):
     while True:
         event = await queue.get()
         asyncio.create_task(_run(event, queue, sem))
-
