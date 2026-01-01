@@ -1,6 +1,7 @@
 """
 异步任务控制器
 """
+
 from dataclasses import dataclass
 import asyncio
 import logging
@@ -18,16 +19,12 @@ from bilicache.common.check import Check
 @dataclass
 class DownloadEvent:
     vid_id: str
-    credential: object
 
 
 logger = logging.getLogger("bilicache")
 
 
-
-
-
-async def poller(queue: asyncio.Queue, credential):
+async def poller(queue: asyncio.Queue):
     """轮询检查新视频并加入下载队列"""
     while True:
         if not await Check.network():
@@ -37,14 +34,12 @@ async def poller(queue: asyncio.Queue, credential):
         creators = CreatorManager.get_bilibili_creator_list()
         config = ConfigManager()
         sem = asyncio.Semaphore(config.get("check", "semaphore"))
-        tasks = [
-            process_creator(creator, queue, credential, sem) for creator in creators
-        ]
+        tasks = [process_creator(creator, queue, sem) for creator in creators]
         await asyncio.gather(*tasks)
-        await asyncio.sleep(config.get("check","sleep"))
+        await asyncio.sleep(config.get("check", "sleep"))
 
 
-async def process_creator(creator, queue, credential, sem: asyncio.Semaphore):
+async def process_creator(creator, queue, sem: asyncio.Semaphore):
     """处理单个创作者，获取视频列表并加入队列"""
     async with sem:
         videos = await creator.get_bilibili_videos()
@@ -56,7 +51,7 @@ async def process_creator(creator, queue, credential, sem: asyncio.Semaphore):
         if not videos:
             logging.info(f"未检测到新视频: {creator_name}")
         for vid in videos:
-            event = DownloadEvent(vid_id=vid, credential=credential)
+            event = DownloadEvent(vid_id=vid)
             await queue.put(event)
 
 
@@ -64,7 +59,9 @@ async def handle_download(event: DownloadEvent, sem: asyncio.Semaphore):
     """处理单个下载任务"""
     async with sem:
         try:
-            await VideoDown(vid_id=event.vid_id, credential=event.credential)
+            await VideoDown(
+                vid_id=event.vid_id,
+            )
         except ErrorChargeVideo as e:
             logger.exception(e)
         except ResponseCodeException as e:

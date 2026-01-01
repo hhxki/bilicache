@@ -80,3 +80,17 @@ class Check:
                     print(f"已删除: {file}")
                 except Exception as e:
                     print(f"删除失败: {file} | {e}")
+    @staticmethod
+    def safe_filename(filename: str) -> str:
+        """将文件名中的非法字符替换为下划线"""
+        return (
+            filename.replace("\\", "_")
+            .replace("/", "_")
+            .replace(":", "_")
+            .replace("*", "_")
+            .replace("?", "_")
+            .replace('"', "_")
+            .replace("<", "_")
+            .replace(">", "_")
+            .replace("|", "_")
+        )

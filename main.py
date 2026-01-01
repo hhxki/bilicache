@@ -3,9 +3,7 @@ import os
 import asyncio
 import logging
 import logging.config
-from bilibili_api import Credential, ResponseCodeException
-
-from bilicache import ConfigManager, get_cookies, poller, dispatcher, RecordManager,Check
+from bilicache import ConfigManager, poller, dispatcher, Check, init_credential
 
 LOG_CONF = {
     "version": 1,
@@ -54,28 +52,16 @@ async def main() -> None:
     if not os.path.exists("./Download"):
         os.mkdir("./Download")
     Check.tempfile("./Download")
+    await init_credential()
     config = ConfigManager()
-    if not config.has("account", "cookies"):
-        cookies = await get_cookies()
-        config.set("account", "cookies", cookies)
-    cookies = config.get("account", "cookies")
-    credential = Credential(
-        sessdata=cookies["SESSDATA"],
-        bili_jct=cookies["bili_jct"],
-        buvid3=cookies["buvid3"],
-        buvid4=cookies["buvid4"],
-        dedeuserid=cookies["DedeUserID"],
-        ac_time_value=cookies["ac_time_value"],
-    )
     if config.get("logging", "debug"):
         LOG_CONF["loggers"]["bilicache"]["level"] = logging.DEBUG
         LOG_CONF["root"]["level"] = logging.DEBUG
     logging.config.dictConfig(LOG_CONF)
-    logger = logging.getLogger("bilicache")
 
     queue = asyncio.Queue()
     download_sem = asyncio.Semaphore(config.get("download", "semaphore"))
-    asyncio.create_task(poller(queue, credential))
+    asyncio.create_task(poller(queue))
     asyncio.create_task(dispatcher(queue, download_sem))
     await asyncio.Event().wait()
 

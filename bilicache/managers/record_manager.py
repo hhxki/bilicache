@@ -5,7 +5,6 @@
 from bilicache.managers.config_manager import ConfigManager
 import os
 import logging
-from pathlib import Path
 
 
 class RecordManager:
