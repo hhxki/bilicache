@@ -2,15 +2,11 @@ import os
 import asyncio
 import logging
 import logging.config
-from bilicache import (
-    ConfigManager,
-    poller,
-    dispatcher,
-    Check,
-    init_credential,
-    LOG_CONF,
-)
-
+from .common.check import Check
+from .config.cookies_locator import init_credential
+from .managers.config_manager import ConfigManager
+from . import LOG_CONF
+from .api.controller import poller,dispatcher
 
 async def main() -> None:
     if not os.path.exists("./Download"):
@@ -30,5 +26,5 @@ async def main() -> None:
     await asyncio.Event().wait()
 
 
-if __name__ == "__main__":
+def run():
     asyncio.run(main())

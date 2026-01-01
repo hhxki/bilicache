@@ -2,9 +2,9 @@
 通用工具模块
 """
 
-from bilicache.common.exceptions import ErrorCountTooMuch, ErrorChargeVideo
-from bilicache.common.log import SafeRotatingFileHandler
-from bilicache.common.check import Check
+from .exceptions import ErrorCountTooMuch, ErrorChargeVideo
+from .log import SafeRotatingFileHandler
+from .check import Check
 
 __all__ = [
     "ErrorCountTooMuch",

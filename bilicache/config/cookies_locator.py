@@ -3,7 +3,7 @@ cookies 的获取和持久化
 """
 
 from bilibili_api import Credential
-from bilicache.managers.config_manager import ConfigManager
+from ..managers.config_manager import ConfigManager
 from typing import Optional
 
 _credential: Optional[Credential] = None

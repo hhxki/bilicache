@@ -6,7 +6,7 @@ from bilibili_api import ResponseCodeException
 import os
 import asyncio
 
-from bilicache.managers.config_manager import ConfigManager
+from .config_manager import ConfigManager
 
 
 class CreatorManager:

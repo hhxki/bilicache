@@ -1,5 +1,5 @@
 from typing import Optional
-from bilicache.common.check import Check
+from ..common.check import Check
 _ffmpeg_path: Optional[str]=None
 
 def get_ffmpeg():

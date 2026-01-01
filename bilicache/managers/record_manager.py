@@ -1,8 +1,7 @@
 """
 下载记录管理器
 """
-
-from bilicache.managers.config_manager import ConfigManager
+from .config_manager import ConfigManager
 import os
 import logging
 

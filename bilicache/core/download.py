@@ -9,16 +9,16 @@ import aiohttp
 import subprocess
 import logging
 
-from bilicache.managers.creator_manager import CreatorManager
-from bilicache.managers.record_manager import RecordManager
-from bilicache.common.exceptions import (
+from ..managers.creator_manager import CreatorManager
+from ..managers.record_manager import RecordManager
+from ..common.exceptions import (
     ErrorCountTooMuch,
     ErrorChargeVideo,
     ErrorNoAudioStream,
 )
-from bilicache.config.ffmpeg_locator import get_ffmpeg
-from bilicache.config.cookies_locator import get_credential
-from bilicache.common.check import Check
+from ..config.ffmpeg_locator import get_ffmpeg
+from ..config.cookies_locator import get_credential
+from ..common.check import Check
 
 logger = logging.getLogger("bilicache")
 

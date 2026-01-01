@@ -8,12 +8,12 @@ import logging
 import aiohttp
 from bilibili_api import ResponseCodeException
 
-from bilicache.core.download import VideoDown
-from bilicache.managers.creator_manager import CreatorManager
-from bilicache.managers.record_manager import RecordManager
-from bilicache.managers.config_manager import ConfigManager
-from bilicache.common.exceptions import ErrorChargeVideo
-from bilicache.common.check import Check
+from ..core.download import VideoDown
+from ..managers.creator_manager import CreatorManager
+from ..managers.record_manager import RecordManager
+from ..managers.config_manager import ConfigManager
+from ..common.exceptions import ErrorChargeVideo
+from ..common.check import Check
 
 
 @dataclass

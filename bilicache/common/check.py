@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import shutil
 import platform
-from bilicache.managers.config_manager import ConfigManager
+from ..managers.config_manager import ConfigManager
 import logging
 
 logger = logging.getLogger("bilicache")
