@@ -12,7 +12,7 @@ async def main() -> None:
     if not os.path.exists("./Download"):
         os.mkdir("./Download")
     Check.tempfile("./Download")
-    await init_credential()
+    init_credential()
     config = ConfigManager()
     if config.get("logging", "debug"):
         LOG_CONF["loggers"]["bilicache"]["level"] = logging.DEBUG

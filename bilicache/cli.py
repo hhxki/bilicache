@@ -5,6 +5,8 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
+from .config.cookies_locator import get_cookies
+import asyncio
 
 RUNTIME_DIR = Path.home() / ".cache" / "bilicache"
 RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
@@ -14,6 +16,7 @@ LOG_FILE = RUNTIME_DIR / ".bilicache.log"
 
 def start():
     if PID_FILE.exists():
+        print("pid file:", PID_FILE.resolve())
         print("bilicache already running")
         return
 
@@ -49,6 +52,11 @@ def restart():
     start()
 
 
+async def login():
+    await get_cookies()
+    restart()
+
+
 def main():
     parser = argparse.ArgumentParser(prog="bilicache")
     sub = parser.add_subparsers(dest="command")
@@ -56,6 +64,7 @@ def main():
     sub.add_parser("start")
     sub.add_parser("stop")
     sub.add_parser("restart")
+    sub.add_parser("login")
 
     args = parser.parse_args()
 
@@ -65,6 +74,8 @@ def main():
         stop()
     elif args.command == "restart":
         restart()
+    elif args.command == "login":
+        asyncio.run(login())
     else:
         parser.print_help()
 
