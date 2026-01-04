@@ -6,8 +6,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-PID_FILE = Path.home() / ".bilicache.pid"
-LOG_FILE = Path.home() / ".bilicache.log"
+RUNTIME_DIR = Path.home() / ".cache" / "bilicache"
+RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+PID_FILE = RUNTIME_DIR / ".bilicache.pid"
+LOG_FILE = RUNTIME_DIR / ".bilicache.log"
 
 
 def start():

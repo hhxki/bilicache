@@ -25,6 +25,5 @@ async def main() -> None:
     asyncio.create_task(dispatcher(queue, download_sem))
     await asyncio.Event().wait()
 
-
-def run():
+if __name__=="__main__":
     asyncio.run(main())

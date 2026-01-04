@@ -4,3 +4,4 @@ Download/
 *.toml
 *.log
 ffmpeg.exe
+*.egg-info/

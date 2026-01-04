@@ -28,7 +28,12 @@ class ConfigManager:
             os.makedirs(dir_path, exist_ok=True)
 
     def _create(self):
-        self.data = document()
+        if self.path == "./config/config.toml":
+            self.data = parse(DEFAULT_CONFIG)
+        elif self.path == "./config/creator.toml":
+            self.data = parse("#[bilibili.193440430]")
+        else:
+            self.data = document()
         self._save()
 
     def _load(self, require_lock=True):
@@ -153,3 +158,32 @@ class ConfigManager:
             return True
         else:
             return False
+
+
+DEFAULT_CONFIG = """\
+#日志设置
+[logging]
+debug = true
+
+#轮询检查设置
+[check]  
+#并发检查数
+semaphore=10
+#轮询时间间隔
+sleep=10
+
+#下载设置
+[download]
+#并发下载数量
+semaphore=5
+
+#ffmpeg设置 默认采用环境变量中的ffmpeg 如果没有的话就查找路径中的
+[ffmpeg]
+#使用环境变量中的ffmpeg
+use_env=true
+# Windows 路径
+path = "./ffmpeg/ffmpeg.exe"
+# linux 路径
+# path = "/usr/local/bin"
+
+"""

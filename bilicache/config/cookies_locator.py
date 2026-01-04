@@ -46,5 +46,5 @@ async def init_credential():
 
 def get_credential() -> Credential:
     if _credential is None:
-        raise RuntimeError("未初始化credential,请在调用get()之前init()")
+        return None
     return _credential
