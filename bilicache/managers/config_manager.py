@@ -163,7 +163,7 @@ class ConfigManager:
 DEFAULT_CONFIG = """\
 #日志设置
 [logging]
-debug = true
+debug = false
 
 #轮询检查设置
 [check]  
@@ -185,5 +185,9 @@ use_env=true
 path = "./ffmpeg/ffmpeg.exe"
 # linux 路径
 # path = "/usr/local/bin"
+
+#定时重启间隔
+[runtime]
+restart_interval=11400
 
 """
