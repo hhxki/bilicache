@@ -71,10 +71,11 @@ async def VideoDown(vid_id: str):
     """下载视频的主函数"""
     v = video.Video(bvid=vid_id, credential=get_credential())
     vid_info = await v.get_info()
-    title = Check.safe_filename(vid_info["title"])
     creator = CreatorManager(vid_info["owner"]["mid"])
     name = await creator.get_bilibili_name()
     path = await creator.get_bilibili_path()
+    title = Check.safe_filename(vid_info["title"])
+    title = Check.acquire_filename(path=path, title=title)
     record = RecordManager(path)
     video_log = f"{vid_id}: {name} - {title}"
     # 检查是否已下载完成
@@ -150,28 +151,24 @@ async def VideoDown(vid_id: str):
                     raise ErrorCountTooMuch("下载失败次数过多")
                 await asyncio.sleep(1)
         logger.debug(f"合并{vid_id}")
-        if os.path.exists(f"{path}{title}.mp4"):
-            os.remove(f"{path}{title}.mp4")
-        DEV_NULL = open(os.devnull, "w")
-
-        subprocess.run(
-            (
-                get_ffmpeg(),
-                "-i",
-                f"{path}{title}_temp.mp4",
-                "-i",
-                f"{path}{title}_temp.m4a",
-                "-vcodec",
-                "copy",
-                "-acodec",
-                "copy",
-                f"{path}{title}.mp4",
-            ),
-            stdout=DEV_NULL,
-            stderr=subprocess.STDOUT,
+        if os.path.getsize(f"{path}{title}_temp.mp4") == 0:
+            raise RuntimeError("视频流为空，拒绝合并")
+        proc = await asyncio.create_subprocess_exec(
+            get_ffmpeg(),
+            "-y",
+            "-i",
+            f"{path}{title}_temp.mp4",
+            "-i",
+            f"{path}{title}_temp.m4a",
+            "-vcodec",
+            "copy",
+            "-acodec",
+            "copy",
+            f"{path}{title}.mp4",
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
         )
-        DEV_NULL.close()
-        del DEV_NULL
+        await proc.wait()
         os.remove(f"{path}{title}_temp.mp4")
         os.remove(f"{path}{title}_temp.m4a")
         logger.info(f"合并完成 {video_log}")
@@ -196,6 +193,10 @@ async def VideoDown(vid_id: str):
             pass
         try:
             os.remove(f"{path}{title}_temp.m4a")
+        except:
+            pass
+        try:
+            os.remove(f"{path}{title}.mp4")
         except:
             pass
         raise

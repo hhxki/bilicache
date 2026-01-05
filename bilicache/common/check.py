@@ -12,6 +12,7 @@ logger = logging.getLogger("bilicache")
 class Check:
     def __init__(self):
         pass
+
     @staticmethod
     def ffmpeg() -> str:
         """
@@ -69,17 +70,29 @@ class Check:
 
     @staticmethod
     def tempfile(root_dir: str):
-        """检查临时文件并删除"""
+        """清理临时文件：
+        - *_temp.*
+        - 0 字节文件（通常是下载中断或占位失败）
+        """
         root = Path(root_dir)
         if not root.exists():
             raise FileNotFoundError(f"目录不存在: {root}")
+
         for file in root.rglob("*"):
-            if file.is_file() and "_temp" in file.stem:
-                try:
+            if not file.is_file():
+                continue
+
+            try:
+                is_temp = "_temp" in file.stem
+                is_zero = file.stat().st_size == 0
+
+                if is_temp or is_zero:
                     file.unlink()
-                    print(f"已删除: {file}")
-                except Exception as e:
-                    print(f"删除失败: {file} | {e}")
+                    logger.debug(f"已删除临时文件: {file}")
+
+            except Exception as e:
+                logger.warning(f"删除失败: {file} | {e}")
+
     @staticmethod
     def safe_filename(filename: str) -> str:
         """将文件名中的非法字符替换为下划线"""
@@ -94,3 +107,16 @@ class Check:
             .replace(">", "_")
             .replace("|", "_")
         )
+
+    def acquire_filename(path: str, title: str, suffix=".mp4") -> str:
+        """并发安全的文件名获取（原子级）"""
+        index = 0
+        while True:
+            name = title if index == 0 else f"{title}({index})"
+            full = os.path.join(path, name + suffix)
+            try:
+                fd = os.open(full, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.close(fd)
+                return name
+            except FileExistsError:
+                index += 1
