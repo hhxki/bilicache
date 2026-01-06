@@ -1,3 +1,4 @@
-from .ffmpeg_locator import get_ffmpeg
-from .cookies_locator import get_credential,init_credential
-__all__ = ["get_ffmpeg", "get_credential", "init_credential"]
+from .ffmpeg_locator import get_ffmpeg, init_ffmpeg
+from .cookies_locator import get_credential, init_credential, get_cookies
+
+__all__ = ["get_ffmpeg", "init_ffmpeg", "get_credential", "init_credential", "get_cookies"]

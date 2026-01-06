@@ -9,7 +9,7 @@ from .managers.config_manager import ConfigManager
 from .managers.creator_manager import CreatorManager
 from .managers.record_manager import RecordManager
 from .api.controller import poller, dispatcher, DownloadEvent
-from .common.exceptions import ErrorCountTooMuch, ErrorChargeVideo
+from .common.exceptions import ErrorCountTooMuch, ErrorChargeVideo, ErrorNoAudioStream
 from .common.check import Check
 from .config.ffmpeg_locator import get_ffmpeg
 from .config.cookies_locator import get_credential, init_credential

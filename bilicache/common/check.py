@@ -108,6 +108,7 @@ class Check:
             .replace("|", "_")
         )
 
+    @staticmethod
     def acquire_filename(path: str, title: str, suffix=".mp4") -> str:
         """并发安全的文件名获取（原子级）"""
         index = 0

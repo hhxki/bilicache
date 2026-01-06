@@ -170,7 +170,7 @@ debug = false
 #并发检查数
 semaphore=10
 #轮询时间间隔
-sleep=10
+sleep=60
 
 #下载设置
 [download]
