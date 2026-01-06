@@ -11,7 +11,7 @@ from .managers.record_manager import RecordManager
 from .api.controller import poller, dispatcher, DownloadEvent
 from .common.exceptions import ErrorCountTooMuch, ErrorChargeVideo, ErrorNoAudioStream
 from .common.check import Check
-from .config.ffmpeg_locator import get_ffmpeg
+from .config.ffmpeg_locator import get_ffmpeg,init_ffmpeg
 from .config.cookies_locator import get_credential, init_credential
 
 __all__ = [
@@ -28,6 +28,7 @@ __all__ = [
     "Check",
     "get_credential",
     "init_credential",
+    "init_ffmpeg"
 ]
 
 import logging

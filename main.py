@@ -8,6 +8,7 @@ from bilicache import (
     dispatcher,
     Check,
     init_credential,
+    init_ffmpeg,
     LOG_CONF,
 )
 
@@ -17,6 +18,7 @@ async def main() -> None:
         os.mkdir("./Download")
     Check.tempfile("./Download")
     init_credential()
+    init_ffmpeg()
     config = ConfigManager()
     if config.get("logging", "debug"):
         LOG_CONF["loggers"]["bilicache"]["level"] = logging.DEBUG

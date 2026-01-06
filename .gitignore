@@ -5,6 +5,8 @@ config.toml
 creator.toml
 record.toml
 *.log
+*.log.*
 ffmpeg.exe
 *.egg-info/
 tokenapi
+dist/

@@ -58,26 +58,24 @@ async def process_creator(creator, queue, sem: asyncio.Semaphore):
 async def handle_download(event: DownloadEvent):
     """处理单个下载任务"""
     try:
-        await VideoDown(
-            vid_id=event.vid_id,
-        )
+        await VideoDown(vid_id=event.vid_id)
     except ErrorChargeVideo as e:
         logger.exception(e)
     except ResponseCodeException as e:
         logger.exception(f"{event.vid_id} 接口错误: {e.code}")
 
 
-async def _run(event, queue):
-    """运行下载任务并标记完成"""
-    try:
-        await handle_download(event)
-    finally:
-        queue.task_done()
+async def _run(event, queue, download_sem: asyncio.Semaphore):
+    """运行下载任务并标记完成（受下载并发信号量限制）"""
+    async with download_sem:
+        try:
+            await handle_download(event)
+        finally:
+            queue.task_done()
 
 
 async def dispatcher(queue: asyncio.Queue, sem: asyncio.Semaphore):
     """分发下载任务"""
     while True:
         event = await queue.get()
-        async with sem:
-            asyncio.create_task(_run(event, queue))
+        asyncio.create_task(_run(event, queue, sem))

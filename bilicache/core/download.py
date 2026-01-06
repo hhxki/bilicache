@@ -75,9 +75,9 @@ async def VideoDown(vid_id: str):
     name = await creator.get_bilibili_name()
     path = await creator.get_bilibili_path()
     title = Check.safe_filename(vid_info["title"])
-    title = Check.acquire_filename(path=path, title=title)
-    record = RecordManager(path)
+    filename = f"{title}-{vid_id}"
     video_log = f"{vid_id}: {name} - {title}"
+    record = RecordManager(path)
     # 检查是否已下载完成
     if record.has(vid_id):
         logging.info(f"存在{vid_id}下载记录，跳过")
@@ -114,12 +114,12 @@ async def VideoDown(vid_id: str):
         retry = 0
         while True:
             try:
-                await downloadVideo(url, vid_quality_list[0], title, path=path)
+                await downloadVideo(url, vid_quality_list[0], filename, path=path)
                 break
             except:
                 retry += 1
                 try:
-                    os.remove(f"{path}{title}_temp.mp4")
+                    os.remove(f"{path}{filename}_temp.mp4")
                 except:
                     pass
                 if retry >= 5:
@@ -131,18 +131,18 @@ async def VideoDown(vid_id: str):
         logger.debug(f"下载音频流 {video_log}")
         while True:
             try:
-                await downloadAudio(url, vid_quality_list[0], title, path=path)
+                await downloadAudio(url, vid_quality_list[0], filename, path=path)
                 break
             except ErrorNoAudioStream:
                 logger.debug(f"{vid_id} 无音频流，跳过音频下载")
-                os.replace(f"{path}{title}_temp.mp4", f"{path}{title}.mp4")
+                os.replace(f"{path}{filename}_temp.mp4", f"{path}{filename}.mp4")
                 record.add(vid_id, title)
                 logger.debug(f"添加记录 {video_log}")
                 return
             except Exception:
                 retry += 1
                 try:
-                    os.remove(f"{path}{title}_temp.m4a")
+                    os.remove(f"{path}{filename}_temp.m4a")
                 except:
                     pass
                 if retry >= 5:
@@ -151,26 +151,26 @@ async def VideoDown(vid_id: str):
                     raise ErrorCountTooMuch("下载失败次数过多")
                 await asyncio.sleep(1)
         logger.debug(f"合并{vid_id}")
-        if os.path.getsize(f"{path}{title}_temp.mp4") == 0:
+        if os.path.getsize(f"{path}{filename}_temp.mp4") == 0:
             raise RuntimeError("视频流为空，拒绝合并")
         proc = await asyncio.create_subprocess_exec(
             get_ffmpeg(),
             "-y",
             "-i",
-            f"{path}{title}_temp.mp4",
+            f"{path}{filename}_temp.mp4",
             "-i",
-            f"{path}{title}_temp.m4a",
+            f"{path}{filename}_temp.m4a",
             "-vcodec",
             "copy",
             "-acodec",
             "copy",
-            f"{path}{title}.mp4",
+            f"{path}{filename}.mp4",
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
         await proc.wait()
-        os.remove(f"{path}{title}_temp.mp4")
-        os.remove(f"{path}{title}_temp.m4a")
+        os.remove(f"{path}{filename}_temp.mp4")
+        os.remove(f"{path}{filename}_temp.m4a")
         logger.info(f"合并完成 {video_log}")
         # add 方法会自动取消 downloading 状态并添加到完成记录
         record.add(vid_id, title)
