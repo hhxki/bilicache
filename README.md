@@ -44,6 +44,12 @@ brew install ffmpeg
 
 ## 🚀 安装
 
+### 从 PyPI 安装
+
+```bash
+pipx install bilicache
+```
+
 ### 从源码安装
 
 ```bash
@@ -55,11 +61,7 @@ cd bilicache
 pip install -e .
 ```
 
-### 从 PyPI 安装
 
-```bash
-pip install bilicache
-```
 
 ## 📖 快速开始
 

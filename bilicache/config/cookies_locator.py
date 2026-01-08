@@ -22,6 +22,7 @@ QrCodeLogin.get_qrcode_url = get_qrcode_url
 
 
 async def get_cookies_by_qrcode():
+    import asyncio
     qr = login_v2.QrCodeLogin(platform=login_v2.QrCodeLoginChannel.WEB)
     await qr.generate_qrcode()
     import segno
@@ -30,23 +31,33 @@ async def get_cookies_by_qrcode():
     print(qr_segno.terminal(compact=True))
     while not qr.has_done():
         await qr.check_state()
-        time.sleep(1)
+        await asyncio.sleep(1)  # 使用异步睡眠而不是同步 sleep
     cookies = await qr.get_credential().get_buvid_cookies()
     return cookies
 
 
 async def get_cookies_by_pwd():
+    import asyncio
+    import sys
+    
     gee = Geetest()  # 实例化极验测试类
     await gee.generate_test()  # 生成测试
     gee.start_geetest_server()  # 在本地部署网页端测试服务
     print(gee.get_geetest_server_url())  # 获取本地服务链接
     while not gee.has_done():  # 如果测试未完成
-        pass  # 就等待
+        await asyncio.sleep(0.1)  # 使用异步睡眠而不是忙等待
     gee.close_geetest_server()  # 关闭部署的网页端测试服务
     print("result:", gee.get_result())
 
-    username = input("username:")  # 手机号/邮箱
-    password = input("password:")  # 密码
+    # 在异步环境中安全地获取输入
+    if sys.version_info >= (3, 9):
+        username = await asyncio.to_thread(input, "username:")  # 手机号/邮箱
+        password = await asyncio.to_thread(input, "password:")  # 密码
+    else:
+        loop = asyncio.get_running_loop()
+        username = await loop.run_in_executor(None, lambda: input("username:"))
+        password = await loop.run_in_executor(None, lambda: input("password:"))
+    
     cred = await login_v2.login_with_password(
         username=username, password=password, geetest=gee  # 调用接口登录
     )
@@ -61,28 +72,48 @@ async def get_cookies_by_pwd():
         gee.start_geetest_server()  # 在本地部署网页端测试服务
         print(gee.get_geetest_server_url())  # 获取本地服务链接
         while not gee.has_done():  # 如果测试未完成
-            pass  # 就等待
+            await asyncio.sleep(0.1)  # 使用异步睡眠而不是忙等待
         gee.close_geetest_server()  # 关闭部署的网页端测试服务
         print("result:", gee.get_result())
         await cred.send_sms(gee)  # 发送验证码
-        code = input("code:")
+        if sys.version_info >= (3, 9):
+            code = await asyncio.to_thread(input, "code:")
+        else:
+            loop = asyncio.get_running_loop()
+            code = await loop.run_in_executor(None, lambda: input("code:"))
         cred = await cred.complete_check(code)  # 调用接口登录
     return cred.get_cookies()
 
 
 async def get_cookies_by_sms():
+    import asyncio
+    import sys
+    
     gee = Geetest()  # 实例化极验测试类
     await gee.generate_test()  # 生成测试
     gee.start_geetest_server()  # 在本地部署网页端测试服务
     print(gee.get_geetest_server_url())  # 获取本地服务链接
     while not gee.has_done():  # 如果测试未完成
-        pass  # 就等待
+        await asyncio.sleep(0.1)  # 使用异步睡眠而不是忙等待
     gee.close_geetest_server()  # 关闭部署的网页端测试服务
     print("result:", gee.get_result())
-    phone = login_v2.PhoneNumber(input("phone:"), "+86")  # 实例化手机号类
+    
+    # 在异步环境中安全地获取输入
+    if sys.version_info >= (3, 9):
+        phone_str = await asyncio.to_thread(input, "phone:")
+    else:
+        loop = asyncio.get_running_loop()
+        phone_str = await loop.run_in_executor(None, lambda: input("phone:"))
+    phone = login_v2.PhoneNumber(phone_str, "+86")  # 实例化手机号类
     captcha_id = await login_v2.send_sms(phonenumber=phone, geetest=gee)  # 发送验证码
     print("captcha_id:", captcha_id)  # 顺便获得对应的 captcha_id
-    code = input("code: ")
+    
+    if sys.version_info >= (3, 9):
+        code = await asyncio.to_thread(input, "code: ")
+    else:
+        loop = asyncio.get_running_loop()
+        code = await loop.run_in_executor(None, lambda: input("code: "))
+    
     cred = await login_v2.login_with_sms(
         phonenumber=phone, code=code, captcha_id=captcha_id  # 调用接口登录
     )
@@ -96,11 +127,15 @@ async def get_cookies_by_sms():
         gee.start_geetest_server()  # 在本地部署网页端测试服务
         print(gee.get_geetest_server_url())  # 获取本地服务链接
         while not gee.has_done():  # 如果测试未完成
-            pass  # 就等待
+            await asyncio.sleep(0.1)  # 使用异步睡眠而不是忙等待
         gee.close_geetest_server()  # 关闭部署的网页端测试服务
         print("result:", gee.get_result())
         await cred.send_sms(gee)  # 发送验证码
-        code = input("code:")
+        if sys.version_info >= (3, 9):
+            code = await asyncio.to_thread(input, "code:")
+        else:
+            loop = asyncio.get_running_loop()
+            code = await loop.run_in_executor(None, lambda: input("code:"))
         cred = await cred.complete_check(code)  # 调用接口登录
 
     return cred.get_cookies()  # 获得 cookies
@@ -108,6 +143,9 @@ async def get_cookies_by_sms():
 
 async def get_cookies():
     """获取B站登录cookies"""
+    import asyncio
+    import sys
+    
     print(
         f"""
     ================= 登录方式 =================
@@ -118,7 +156,16 @@ async def get_cookies():
     请输入对应的数字回车...
     """
     )
-    choose = input()
+    # 在异步环境中，使用 asyncio.to_thread 或直接在线程中执行 input
+    # 对于 Python 3.9+，使用 asyncio.to_thread
+    if sys.version_info >= (3, 9):
+        choose = await asyncio.to_thread(input)
+    else:
+        # 对于旧版本 Python，使用 run_in_executor
+        loop = asyncio.get_running_loop()
+        choose = await loop.run_in_executor(None, input)
+    
+    choose = choose.strip()
     if choose == "1":
         cookies = await get_cookies_by_qrcode()
     elif choose == "2":

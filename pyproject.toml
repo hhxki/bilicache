@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bilicache"
-version = "0.1.0"
+version = "0.1.2"
 description = "B站视频自动下载缓存工具"
 readme = "README.md"
 requires-python = ">=3.9"
