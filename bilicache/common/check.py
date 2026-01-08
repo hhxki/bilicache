@@ -5,6 +5,7 @@ import shutil
 import platform
 from ..managers.config_manager import ConfigManager
 import logging
+import socket
 
 logger = logging.getLogger("bilicache")
 
@@ -60,7 +61,8 @@ class Check:
     async def network(timeout=3):
         """检查网络连接"""
         try:
-            async with aiohttp.ClientSession() as session:
+            connector = aiohttp.TCPConnector(family=socket.AF_INET, ssl=False)
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.get(
                     "http://www.baidu.com", timeout=aiohttp.ClientTimeout(total=timeout)
                 ) as resp:

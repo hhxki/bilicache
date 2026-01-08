@@ -106,7 +106,9 @@ async def VideoDown(vid_id: str):
                 record.config.data["download"]["downloading"] = downloading
                 record.config._save(require_lock=False)
         if e.code == 87008:
-            raise ErrorChargeVideo(f"跳过充电视频:{title}")
+            # 添加充电视频记录
+            logger.info(f"充电视频 跳过{video_log}")
+            record.add_charge(vid_id, title)
         raise
     vid_quality_list = url["accept_quality"]
     try:
@@ -117,6 +119,10 @@ async def VideoDown(vid_id: str):
                 await downloadVideo(url, vid_quality_list[0], filename, path=path)
                 break
             except:
+                if vid_info.get("is_upower_exclusive", False):
+                    logger.info(f"充电视频 跳过{video_log}")
+                    record.add_charge(vid_id, title)
+                    return
                 retry += 1
                 try:
                     os.remove(f"{path}{filename}_temp.mp4")

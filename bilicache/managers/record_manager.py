@@ -1,6 +1,7 @@
 """
 下载记录管理器
 """
+
 from .config_manager import ConfigManager
 import os
 import logging
@@ -88,6 +89,31 @@ class RecordManager:
             self.config.data["download"]["record"] = records
             self.config._save(require_lock=False)  # 一次性保存所有更改
 
+    def add_charge(self, bvid, title):
+        """添加下载完成记录"""
+        # 在锁保护下进行，保证原子性
+        with self.config._lock:
+            self.config._load(require_lock=False)  # 重新加载最新数据，不获取锁
+            # 无论是否已存在，都先清理 downloading 状态（防止残留）
+            downloading = self.config.get("download", "downloading") or {}
+            if bvid in downloading:
+                del downloading[bvid]
+                self.config.data.setdefault("download", {})
+                self.config.data["download"]["downloading"] = downloading
+
+            # 检查是否已存在
+            records = self.config.get("download", "charge") or {}
+            if bvid in records:
+                # 即使已存在，也要保存（因为可能清理了 downloading 状态）
+                self.config._save(require_lock=False)
+                return
+
+            # 添加到完成记录
+            records[bvid] = title
+            self.config.data.setdefault("download", {})
+            self.config.data["download"]["charge"] = records
+            self.config._save(require_lock=False)  # 一次性保存所有更改
+
     def cleanup_stale_downloading(self):
         """清理残留的 downloading 状态（如果临时文件不存在且视频未完成）"""
         # 在锁保护下进行，保证原子性
@@ -132,9 +158,12 @@ class RecordManager:
 
         records = set(self.config.get("download", "record") or {})
         downloading = set(self.config.get("download", "downloading") or {})
+        charge = set(self.config.get("download", "charge") or {})
 
         # 排除已下载和正在下载的视频
         videos = [
-            vid for vid in videos if vid not in records and vid not in downloading
+            vid
+            for vid in videos
+            if vid not in records and vid not in downloading and vid not in charge
         ]
         return videos
